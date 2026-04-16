@@ -25,8 +25,8 @@ export const metadata: Metadata = {
   description:
     "A members-only club on the Upper East Side for world-class training, restorative recovery, and a discerning community.",
   icons: {
-    icon: "/favicon.svg",
-    apple: "/apple-touch-icon.svg",
+    icon: `${process.env.NODE_ENV === "production" ? "/boaz-fitness-studios" : ""}/favicon.svg`,
+    apple: `${process.env.NODE_ENV === "production" ? "/boaz-fitness-studios" : ""}/apple-touch-icon.svg`,
   },
 };
 
