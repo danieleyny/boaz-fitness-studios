@@ -23,15 +23,24 @@ export default function HomeHero() {
         sizes="100vw"
         className="object-cover"
       />
+      {/* Dark tint — tames bright imagery so white copy stays legible */}
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 z-[1]"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.75) 100%)",
+        }}
+      />
       <span className="hero-vignette" aria-hidden="true" />
       <GrainOverlay />
 
-      <div className="relative z-[3] max-w-7xl w-full mx-auto px-6 md:px-12 pb-32 md:pb-40">
+      <div className="relative z-[3] max-w-7xl w-full mx-auto px-6 md:px-12 pt-32 pb-32 md:pb-40">
         <motion.div
           initial={initial}
           animate={animate}
           transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="max-w-3xl"
+          className="max-w-4xl"
         >
           <Eyebrow tone="ivory" className="mb-8">
             {home.hero.eyebrow}
@@ -40,10 +49,11 @@ export default function HomeHero() {
           <h1
             className="font-display text-ivory"
             style={{
-              fontSize: "clamp(3rem, 8.5vw, 7rem)",
-              lineHeight: 1.0,
+              fontSize: "clamp(2.5rem, 6vw, 6rem)",
+              lineHeight: 1.05,
               letterSpacing: "-0.02em",
               fontWeight: 500,
+              textShadow: "0 2px 40px rgba(0,0,0,0.4)",
             }}
           >
             {home.hero.title.before}

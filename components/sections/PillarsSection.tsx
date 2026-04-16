@@ -31,14 +31,18 @@ export default function PillarsSection() {
           {home.pillars.items.map((pillar, i) => {
             const img = pillarImages[i];
             const reverse = i % 2 === 1;
+            const imageCols = reverse
+              ? "lg:col-span-6 lg:col-start-7 lg:row-start-1"
+              : "lg:col-span-6 lg:col-start-1 lg:row-start-1";
+            const contentCols = reverse
+              ? "lg:col-span-5 lg:col-start-1 lg:row-start-1"
+              : "lg:col-span-5 lg:col-start-8 lg:row-start-1";
             return (
               <Reveal
                 key={pillar.number}
-                className={`grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center ${
-                  reverse ? "lg:[&>*:first-child]:order-2" : ""
-                }`}
+                className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center"
               >
-                <div className="lg:col-span-6">
+                <div className={imageCols}>
                   <EditorialImage
                     src={img.src}
                     alt={img.alt}
@@ -46,7 +50,7 @@ export default function PillarsSection() {
                     sizes="(max-width: 1024px) 100vw, 50vw"
                   />
                 </div>
-                <div className="lg:col-span-5 lg:col-start-8">
+                <div className={contentCols}>
                   <NumberedMarker
                     number={pillar.number}
                     label={pillar.label}
