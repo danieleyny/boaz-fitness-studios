@@ -11,7 +11,11 @@ import { brand } from "@/lib/copy";
  * brownstone rows on the side-street frontages (west of Park Ave), prewar
  * apartment buildings on the east avenues (3rd / 2nd / 1st), and larger
  * corner buildings at the intersections. Central Park sits on the left with
- * the Lake and winding paths; the East River laps the right edge.
+ * the Lake and Conservatory Water; the East River laps the right edge.
+ *
+ * Select iconic landmarks are labelled in a subordinate italic — dot placed
+ * at the actual geographic footprint, label dropped into the nearest
+ * mid-block void so it never clashes with a building rect.
  *
  * Generally accurate to the neighborhood, stylized for legibility. The Boaz
  * footprint is highlighted in gold between 5th and Madison on 73rd.
@@ -44,12 +48,41 @@ const V = {
 };
 
 // Boaz footprint: south edge of the 74–73rd block, a few lots east of 5th Ave.
-// Facing south onto 73rd Street.
 const BOAZ = { x: 326, y: 318, w: 7, h: 12 };
 const MARKER = { x: BOAZ.x + BOAZ.w / 2, y: BOAZ.y + BOAZ.h / 2 };
 
-// Seeded PRNG so building layouts are stable between SSR and CSR (and across
-// re-renders). Building widths/heights vary per block without hydration drift.
+// ─── Iconic landmarks in the 70th–77th window ─────────────────────────────
+// Each entry's `dot` is the actual geographic footprint; the `label` sits in
+// the nearest mid-block void so italic text doesn't overlap a building rect.
+type Landmark = { name: string; dot: [number, number]; label: [number, number] };
+
+const LANDMARKS: Landmark[] = [
+  // 1 E 70th St — east side of 5th Ave, between 70th and 71st
+  { name: "The Frick Collection", dot: [322, 492], label: [332, 498] },
+  // 25 E 77th St — between 5th and Madison, south side of 77th
+  { name: "The Mark", dot: [345, 82], label: [326, 110] },
+  // 35 E 76th St — NE corner of Madison & 76th
+  { name: "The Carlyle", dot: [401, 100], label: [407, 122] },
+  // 945 Madison — SE corner of Madison & 75th (Breuer building)
+  { name: "Breuer Building", dot: [402, 212], label: [408, 238] },
+  // NW corner of Park & 71st
+  { name: "740 Park", dot: [476, 420], label: [420, 430] },
+  // 725 Park Ave — east side, between 70th and 71st
+  { name: "Asia Society", dot: [488, 494], label: [494, 505] },
+  // 100 E 77th St — complex between Park and Lex, north of 77th
+  { name: "Lenox Hill", dot: [528, 64], label: [498, 108] },
+];
+
+// Park features — italic label only, sits on top of the water/green shape.
+type ParkLabel = { name: string; at: [number, number]; size: number; color: string };
+
+const PARK_LABELS: ParkLabel[] = [
+  { name: "Central Park", at: [58, 448], size: 22, color: "rgba(122,168,112,0.6)" },
+  { name: "The Lake", at: [98, 290], size: 13, color: "rgba(210,225,240,0.65)" },
+  { name: "Conservatory Water", at: [214, 242], size: 8.5, color: "rgba(210,225,240,0.6)" },
+];
+
+// Seeded PRNG so building layouts are stable between SSR and CSR.
 function rng(seed: number) {
   let s = Math.abs(seed) % 2147483647;
   if (s <= 0) s += 2147483646;
@@ -92,25 +125,20 @@ function blockBuildings(
   const rowDepth = Math.min(h / 2 - 1.6, isEast ? 18 : 14);
   const colDepth = Math.min(w / 2 - 1.6, isEast ? 18 : 14);
 
-  // Corner buildings (4 per block, slightly larger)
+  // Corner buildings
   for (const c of [
     { x: x1 + 0.5, y: y1 + 0.5 },
     { x: x2 - cornerSize - 0.5, y: y1 + 0.5 },
     { x: x1 + 0.5, y: y2 - cornerSize - 0.5 },
     { x: x2 - cornerSize - 0.5, y: y2 - cornerSize - 0.5 },
   ]) {
-    out.push({
-      x: c.x,
-      y: c.y,
-      w: cornerSize,
-      h: cornerSize,
-      kind: "corner",
-    });
+    out.push({ x: c.x, y: c.y, w: cornerSize, h: cornerSize, kind: "corner" });
   }
 
-  // Top row (facing north side street)
   const edgeS = x1 + cornerSize + 1;
   const edgeE = x2 - cornerSize - 1;
+
+  // Top row (facing north side street)
   if (edgeE - edgeS > 4) {
     const count = Math.max(2, Math.floor((edgeE - edgeS) / brownstoneW));
     const bw = (edgeE - edgeS) / count;
@@ -145,9 +173,10 @@ function blockBuildings(
     }
   }
 
-  // Left edge (along west avenue)
   const sideS = y1 + cornerSize + 1;
   const sideE = y2 - cornerSize - 1;
+
+  // Left edge (along west avenue)
   if (sideE - sideS > 4 && h > 48) {
     const count = Math.max(2, Math.floor((sideE - sideS) / brownstoneW));
     const bh = (sideE - sideS) / count;
@@ -210,15 +239,12 @@ function allBuildings(): Building[] {
 
 const BUILDINGS = allBuildings();
 
-// Styling per building kind (fill opacity, stroke opacity, stroke width)
 const KIND_STYLES = {
   brownstone: { fill: 0.05, stroke: 0.22, sw: 0.55 },
   corner: { fill: 0.075, stroke: 0.3, sw: 0.7 },
   apartment: { fill: 0.085, stroke: 0.32, sw: 0.75 },
 } as const;
 
-// Boaz overlaps a generated building near 5th/73rd — hide any generated rect
-// that would clash with the highlighted footprint.
 function overlapsBoaz(b: Building) {
   return (
     b.x < BOAZ.x + BOAZ.w + 1 &&
@@ -227,6 +253,22 @@ function overlapsBoaz(b: Building) {
     b.y + b.h > BOAZ.y - 1
   );
 }
+
+// Park greenspace specks — placed in the park, avoiding the Lake + Conservatory
+// Water shapes so they don't freckle the water.
+const PARK_SPECKS = (() => {
+  const r = rng(42);
+  const specks: { x: number; y: number; r: number }[] = [];
+  for (let i = 0; i < 90; i++) {
+    const x = r() * 270 + 10;
+    const y = r() * 580 + 20;
+    const inLake = x > 50 && x < 214 && y > 235 && y < 340;
+    const inPond = x > 195 && x < 278 && y > 210 && y < 260;
+    if (inLake || inPond) continue;
+    specks.push({ x, y, r: 0.6 + r() * 1.2 });
+  }
+  return specks;
+})();
 
 export default function EditorialMap({
   height = "640px",
@@ -299,10 +341,6 @@ export default function EditorialMap({
             <stop offset="60%" stopColor="rgba(240,188,0,0.1)" />
             <stop offset="100%" stopColor="rgba(240,188,0,0)" />
           </radialGradient>
-          <radialGradient id="boazGlow" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0%" stopColor="rgba(240,188,0,0.9)" />
-            <stop offset="100%" stopColor="rgba(240,188,0,0.2)" />
-          </radialGradient>
           <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
             <feGaussianBlur stdDeviation="3" />
           </filter>
@@ -367,15 +405,15 @@ export default function EditorialMap({
           strokeDasharray="2 4"
           {...anim(0.7)}
         />
-        {/* The Lake — irregular organic water body */}
+        {/* The Lake — central, elongated water body around 72nd–77th */}
         <motion.path
           d="
-            M 50 240
-            C 40 212, 80 198, 130 206
-            C 180 214, 226 232, 244 268
-            C 256 302, 240 338, 200 346
-            C 160 354, 114 340, 78 322
-            C 52 308, 44 274, 50 240
+            M 60 270
+            C 50 242, 78 224, 112 228
+            C 150 232, 192 242, 208 268
+            C 218 298, 196 324, 156 328
+            C 114 332, 74 318, 60 295
+            C 55 290, 55 280, 60 270
             Z
           "
           fill="url(#lakeFill)"
@@ -383,15 +421,22 @@ export default function EditorialMap({
           strokeWidth={0.8}
           {...anim(0.8)}
         />
-        {/* Conservatory Water — smaller pond, asymmetric */}
+        {/* Conservatory Water — small east-side pond near 5th Ave, 73rd–75th */}
         <motion.path
-          d="M 140 108 C 132 96, 160 92, 184 100 C 204 110, 206 128, 190 138 C 172 146, 150 140, 140 124 Z"
+          d="
+            M 246 214
+            C 236 208, 230 224, 236 238
+            C 240 252, 254 258, 266 254
+            C 274 250, 278 236, 272 222
+            C 264 210, 252 208, 246 214
+            Z
+          "
           fill="url(#lakeFill)"
-          stroke="rgba(104,144,176,0.38)"
+          stroke="rgba(104,144,176,0.4)"
           strokeWidth={0.6}
           {...anim(0.85)}
         />
-        {/* A scatter of park greenspace dots (softens the park interior) */}
+        {/* Scattered greenspace specks */}
         {PARK_SPECKS.map((p, i) => (
           <motion.circle
             key={`pk-${i}`}
@@ -399,7 +444,7 @@ export default function EditorialMap({
             cy={p.y}
             r={p.r}
             fill="rgba(122,168,112,0.22)"
-            {...fade(1.0 + i * 0.015)}
+            {...fade(1.0 + i * 0.012)}
           />
         ))}
 
@@ -430,7 +475,7 @@ export default function EditorialMap({
           </g>
         ))}
 
-        {/* ─── Street grid lines (thinner — side streets) ──────────── */}
+        {/* ─── Street grid lines ──────────────────────────────────── */}
         {V.streets.map((s, i) => (
           <g key={s.name}>
             <motion.line
@@ -503,7 +548,6 @@ export default function EditorialMap({
           fill="url(#waveHatch)"
           {...fade(0.5)}
         />
-        {/* FDR Drive — thin dashed hairline along the west bank */}
         <motion.line
           x1={V.riverLeftEdge - 6}
           y1={0}
@@ -514,6 +558,58 @@ export default function EditorialMap({
           strokeDasharray="6 3"
           {...anim(0.7)}
         />
+
+        {/* ─── Park labels (italic, subdued) ──────────────────────── */}
+        {PARK_LABELS.map((p, i) => (
+          <motion.text
+            key={p.name}
+            x={p.at[0]}
+            y={p.at[1]}
+            fill={p.color}
+            fontFamily="'Cormorant Garamond', Georgia, serif"
+            fontStyle="italic"
+            fontSize={p.size}
+            fontWeight={500}
+            letterSpacing={p.size > 16 ? 2 : 0.5}
+            {...fade(1.3 + i * 0.08)}
+          >
+            {p.name}
+          </motion.text>
+        ))}
+
+        {/* ─── Iconic landmarks (dot + italic label) ───────────────── */}
+        {LANDMARKS.map((lm, i) => (
+          <motion.g key={lm.name} {...fade(1.5 + i * 0.06)}>
+            {/* Dark halo — keeps the gold dot visible over building fills */}
+            <circle
+              cx={lm.dot[0]}
+              cy={lm.dot[1]}
+              r={3.4}
+              fill="var(--obsidian)"
+              opacity={0.85}
+            />
+            <circle
+              cx={lm.dot[0]}
+              cy={lm.dot[1]}
+              r={2.4}
+              fill="rgba(240,188,0,0.25)"
+            />
+            <circle cx={lm.dot[0]} cy={lm.dot[1]} r={1.4} fill="var(--gold)" />
+            {/* Subordinate italic label — clearly demoted from Boaz title */}
+            <text
+              x={lm.label[0]}
+              y={lm.label[1]}
+              fill="rgba(243,255,251,0.55)"
+              fontFamily="'Cormorant Garamond', Georgia, serif"
+              fontStyle="italic"
+              fontSize={10.5}
+              fontWeight={400}
+              letterSpacing={0.4}
+            >
+              {lm.name}
+            </text>
+          </motion.g>
+        ))}
 
         {/* ─── Boaz footprint — highlighted ─────────────────────────── */}
         <motion.g {...fade(1.15)}>
@@ -683,19 +779,3 @@ export default function EditorialMap({
     </a>
   );
 }
-
-// Scattered greenspace pixels inside the park — deterministic so SSR matches.
-const PARK_SPECKS = (() => {
-  const r = rng(42);
-  const specks: { x: number; y: number; r: number }[] = [];
-  // Avoid the lake/pond regions so we don't speck over water.
-  for (let i = 0; i < 90; i++) {
-    const x = r() * 270 + 10;
-    const y = r() * 580 + 20;
-    const inLake = x > 50 && x < 244 && y > 196 && y < 350;
-    const inPond = x > 140 && x < 200 && y > 96 && y < 140;
-    if (inLake || inPond) continue;
-    specks.push({ x, y, r: 0.6 + r() * 1.2 });
-  }
-  return specks;
-})();
