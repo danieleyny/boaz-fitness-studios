@@ -278,13 +278,18 @@ export default function EditorialMap({
   className?: string;
 }) {
   const reduce = useReducedMotion();
+  // NB: animations fire on mount (not on scroll). Earlier `whileInView` with
+  // `viewport: { amount: 0.3 }` silently failed on iOS Safari and some
+  // Chromium builds — IntersectionObserver never fired the enter event, so
+  // every `motion.*` element stayed at its `initial` state (opacity: 0 /
+  // pathLength: 0) and the map looked empty. Plain `animate` is reliable
+  // across browsers.
   const anim = (delay: number) =>
     reduce
-      ? { initial: {}, animate: {}, transition: { duration: 0 } }
+      ? { initial: false as const, transition: { duration: 0 } }
       : {
           initial: { pathLength: 0, opacity: 0 },
-          whileInView: { pathLength: 1, opacity: 1 },
-          viewport: { once: true, amount: 0.3 },
+          animate: { pathLength: 1, opacity: 1 },
           transition: {
             duration: 1.1,
             delay,
@@ -293,11 +298,10 @@ export default function EditorialMap({
         };
   const fade = (delay: number) =>
     reduce
-      ? { initial: {}, animate: {}, transition: { duration: 0 } }
+      ? { initial: false as const, transition: { duration: 0 } }
       : {
           initial: { opacity: 0 },
-          whileInView: { opacity: 1 },
-          viewport: { once: true, amount: 0.3 },
+          animate: { opacity: 1 },
           transition: {
             duration: 0.9,
             delay,
@@ -650,8 +654,7 @@ export default function EditorialMap({
             stroke="rgba(240,188,0,0.55)"
             strokeWidth={0.9}
             initial={{ scale: 0, opacity: 0 }}
-            whileInView={{ scale: 1, opacity: 1 }}
-            viewport={{ once: true, amount: 0.3 }}
+            animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.8, delay: 1.3, ease: [0.22, 1, 0.36, 1] }}
           />
           <motion.line
@@ -662,14 +665,12 @@ export default function EditorialMap({
             stroke="var(--gold)"
             strokeWidth={1}
             initial={{ pathLength: 0 }}
-            whileInView={{ pathLength: 1 }}
-            viewport={{ once: true, amount: 0.3 }}
+            animate={{ pathLength: 1 }}
             transition={{ duration: 0.6, delay: 1.5 }}
           />
           <motion.g
             initial={{ opacity: 0, x: -6 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.7, delay: 1.7, ease: [0.22, 1, 0.36, 1] }}
           >
             <text
