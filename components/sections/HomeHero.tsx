@@ -23,13 +23,22 @@ export default function HomeHero() {
         sizes="100vw"
         className="object-cover"
       />
-      {/* Dark tint — tames bright imagery so white copy stays legible */}
+      {/* Dark tint — vertical for overall legibility, horizontal scrim on the
+          left so the display copy reads cleanly against busy imagery. */}
       <span
         aria-hidden="true"
         className="absolute inset-0 z-[1]"
         style={{
           background:
-            "linear-gradient(180deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.4) 40%, rgba(0,0,0,0.75) 100%)",
+            "linear-gradient(180deg, rgba(0,0,0,0.70) 0%, rgba(0,0,0,0.55) 45%, rgba(0,0,0,0.88) 100%)",
+        }}
+      />
+      <span
+        aria-hidden="true"
+        className="absolute inset-0 z-[1]"
+        style={{
+          background:
+            "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 40%, rgba(0,0,0,0) 70%)",
         }}
       />
       <span className="hero-vignette" aria-hidden="true" />

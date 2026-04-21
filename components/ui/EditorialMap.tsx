@@ -6,21 +6,20 @@ import { brand } from "@/lib/copy";
 
 /**
  * An illustrated Upper East Side map rendered as SVG.
- * Clicking the whole surface opens Google Maps directions with the destination
+ * Clicking the surface opens Google Maps directions with the destination
  * pre-filled; Google auto-detects the user's current location as origin
  * (with their permission).
  *
  * Geometry is stylized, not surveyed — proportions are tuned for legibility.
- * Central Park sits on the left (with the Lake and winding paths), the
- * avenue/street grid fills the middle, and the East River with a hint of FDR
- * Drive skirts the right edge. The Boaz marker sits between 5th and Madison
- * on 73rd.
+ * The map reads as a dense NYC street-plan: Central Park on the left, the
+ * avenue/street grid filled with building-block tiles in between, and the
+ * East River skirting the right edge. The Boaz marker sits between 5th and
+ * Madison on 73rd.
  */
 
 const V = {
   width: 1000,
   height: 600,
-  // Avenues (vertical) — Upper East Side sweep
   avenues: [
     { x: 305, name: "5th Ave" },
     { x: 390, name: "Madison" },
@@ -30,7 +29,6 @@ const V = {
     { x: 750, name: "2nd Ave" },
     { x: 840, name: "1st Ave" },
   ],
-  // Streets (horizontal)
   streets: [
     { y: 70, name: "77th St" },
     { y: 135, name: "76th St" },
@@ -41,20 +39,77 @@ const V = {
     { y: 460, name: "71st St" },
     { y: 525, name: "70th St" },
   ],
-  // Boaz marker: between 5th and Madison, on 73rd
+  // Boaz marker — between 5th and Madison, on 73rd Street
   marker: { x: 347, y: 330 },
   // Park extends from 0 → ~290 horizontally across full height
   parkRightEdge: 290,
-  // East River begins at right edge
   riverLeftEdge: 905,
+  // Virtual top/bottom so edge rows have a clean boundary
+  topEdge: 0,
+  bottomEdge: 600,
 };
 
-const LANDMARKS = [
-  // Upper East Side institutions near the marker
-  { x: 305, y: 525, label: "The Frick", caption: "70th & 5th" },
-  { x: 570, y: 70, label: "6 Train", caption: "77th St" },
-  { x: 660, y: 525, label: "Sotheby's", caption: "72nd & York" },
-];
+// Small deterministic PRNG so building subdivisions don't shift across
+// re-renders or server/client boundaries (would cause hydration mismatches).
+function rng(seed: number) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+// Enumerate every block cell (between adjacent avenues × adjacent streets,
+// plus the top and bottom edge rows). Dropping the sliver east of 1st Ave
+// since that's essentially FDR territory, not city blocks.
+function buildBlocks() {
+  const cols: { x1: number; x2: number }[] = [];
+  for (let i = 0; i < V.avenues.length - 1; i++) {
+    cols.push({ x1: V.avenues[i].x, x2: V.avenues[i + 1].x });
+  }
+  const rows: { y1: number; y2: number }[] = [];
+  rows.push({ y1: V.topEdge, y2: V.streets[0].y });
+  for (let i = 0; i < V.streets.length - 1; i++) {
+    rows.push({ y1: V.streets[i].y, y2: V.streets[i + 1].y });
+  }
+  rows.push({ y1: V.streets[V.streets.length - 1].y, y2: V.bottomEdge });
+  const out: {
+    key: string;
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    featured: boolean;
+    lots: number[];
+  }[] = [];
+  cols.forEach((c, ci) => {
+    rows.forEach((r, ri) => {
+      // The marker block — between 5th (col 0) and Madison, 73rd–72nd
+      // (streets[4] lies at y=330, which is rows[5] top). 73rd has index 4
+      // in V.streets, so the block south of 73rd is rows[5].
+      const featured = ci === 0 && ri === 5;
+      const r1 = rng(ci * 100 + ri);
+      const lotCount = 2 + Math.floor(r1() * 2); // 2–3 sub-lots
+      const lots: number[] = [];
+      for (let k = 1; k <= lotCount; k++) {
+        lots.push(k / (lotCount + 1) + (r1() - 0.5) * 0.08);
+      }
+      out.push({
+        key: `b-${ci}-${ri}`,
+        x: c.x1 + 3,
+        y: r.y1 + 3,
+        w: c.x2 - c.x1 - 6,
+        h: r.y2 - r.y1 - 6,
+        featured,
+        lots,
+      });
+    });
+  });
+  return out;
+}
+
+const BLOCKS = buildBlocks();
 
 export default function EditorialMap({
   height = "620px",
@@ -84,7 +139,11 @@ export default function EditorialMap({
           initial: { opacity: 0 },
           whileInView: { opacity: 1 },
           viewport: { once: true, amount: 0.3 },
-          transition: { duration: 0.9, delay, ease: [0.22, 1, 0.36, 1] as [number, number, number, number] },
+          transition: {
+            duration: 0.9,
+            delay,
+            ease: [0.22, 1, 0.36, 1] as [number, number, number, number],
+          },
         };
 
   return (
@@ -143,10 +202,9 @@ export default function EditorialMap({
           </pattern>
         </defs>
 
-        {/* Base canvas */}
         <rect x="0" y="0" width={V.width} height={V.height} fill="var(--obsidian)" />
 
-        {/* ─── Central Park — organic left mass ─────────────────────── */}
+        {/* ─── Central Park (shape only, unlabeled) ─────────────────── */}
         <motion.path
           d="
             M 0 10
@@ -163,40 +221,10 @@ export default function EditorialMap({
           strokeDasharray="3 5"
           {...anim(0.1)}
         />
-
-        {/* Central Park label */}
-        <motion.text
-          x={90}
-          y={240}
-          fill="rgba(243,255,251,0.5)"
-          fontFamily="'Cormorant Garamond', Georgia, serif"
-          fontStyle="italic"
-          fontSize={30}
-          fontWeight={500}
-          letterSpacing={2}
-          {...fade(0.4)}
-        >
-          Central Park
-        </motion.text>
-        <motion.text
-          x={94}
-          y={262}
-          fill="rgba(243,255,251,0.35)"
-          fontFamily="Inter, system-ui, sans-serif"
-          fontSize={9}
-          fontWeight={500}
-          letterSpacing={3}
-          style={{ textTransform: "uppercase" }}
-          {...fade(0.5)}
-        >
-          843 Acres · Est. 1858
-        </motion.text>
-
-        {/* Park paths — stylized, dashed hairlines */}
         <motion.path
           d="M 0 420 C 60 380, 120 360, 180 320 S 240 240, 270 180"
           fill="none"
-          stroke="rgba(243,255,251,0.14)"
+          stroke="rgba(243,255,251,0.12)"
           strokeWidth={1}
           strokeDasharray="2 4"
           {...anim(0.55)}
@@ -204,7 +232,7 @@ export default function EditorialMap({
         <motion.path
           d="M 20 120 C 80 140, 140 180, 200 220 S 260 320, 270 400"
           fill="none"
-          stroke="rgba(243,255,251,0.1)"
+          stroke="rgba(243,255,251,0.08)"
           strokeWidth={1}
           strokeDasharray="2 4"
           {...anim(0.65)}
@@ -212,13 +240,12 @@ export default function EditorialMap({
         <motion.path
           d="M 40 540 C 110 480, 190 440, 250 380"
           fill="none"
-          stroke="rgba(243,255,251,0.1)"
+          stroke="rgba(243,255,251,0.08)"
           strokeWidth={1}
           strokeDasharray="2 4"
           {...anim(0.7)}
         />
-
-        {/* The Lake — kidney-shape water feature around 72nd–75th */}
+        {/* Lake — unlabeled water body */}
         <motion.path
           d="
             M 80 340
@@ -233,60 +260,70 @@ export default function EditorialMap({
           strokeWidth={0.8}
           {...anim(0.8)}
         />
-        <motion.text
-          x={128}
-          y={346}
-          fill="rgba(200,220,240,0.55)"
-          fontFamily="'Cormorant Garamond', Georgia, serif"
-          fontStyle="italic"
-          fontSize={13}
-          fontWeight={500}
-          letterSpacing={1}
-          {...fade(1.0)}
-        >
-          The Lake
-        </motion.text>
+        {/* Small reservoir hint — upper left */}
+        <motion.path
+          d="M 60 90 C 50 70, 90 64, 140 70 C 200 80, 230 110, 210 140 C 180 165, 120 160, 90 140 C 65 122, 62 108, 60 90 Z"
+          fill="url(#lakeFill)"
+          stroke="rgba(104,144,176,0.35)"
+          strokeWidth={0.6}
+          {...anim(0.85)}
+        />
 
-        {/* Bethesda Terrace tick */}
-        <motion.g {...fade(1.1)}>
-          <circle cx={255} cy={400} r={2} fill="rgba(240,188,0,0.6)" />
-          <text
-            x={262}
-            y={403}
-            fill="rgba(243,255,251,0.45)"
-            fontFamily="Inter, system-ui, sans-serif"
-            fontSize={8}
-            fontWeight={500}
-            letterSpacing={2}
-            style={{ textTransform: "uppercase" }}
-          >
-            Bethesda
-          </text>
+        {/* ─── City blocks (stylized building tiles) ────────────────── */}
+        <motion.g {...fade(0.2)}>
+          {BLOCKS.map((b) => (
+            <g key={b.key}>
+              <rect
+                x={b.x}
+                y={b.y}
+                width={b.w}
+                height={b.h}
+                fill={
+                  b.featured
+                    ? "rgba(240,188,0,0.06)"
+                    : "rgba(243,255,251,0.022)"
+                }
+                stroke={
+                  b.featured
+                    ? "rgba(240,188,0,0.45)"
+                    : "rgba(240,188,0,0.08)"
+                }
+                strokeWidth={b.featured ? 0.8 : 0.5}
+              />
+              {/* Lot subdivisions — thin vertical strokes suggesting buildings */}
+              {b.lots.map((f, i) => (
+                <line
+                  key={i}
+                  x1={b.x + b.w * f}
+                  x2={b.x + b.w * f}
+                  y1={b.y + 3}
+                  y2={b.y + b.h - 3}
+                  stroke={
+                    b.featured
+                      ? "rgba(240,188,0,0.18)"
+                      : "rgba(243,255,251,0.05)"
+                  }
+                  strokeWidth={0.5}
+                />
+              ))}
+              {/* Mid-block service mews — horizontal hairline */}
+              <line
+                x1={b.x + 4}
+                x2={b.x + b.w - 4}
+                y1={b.y + b.h / 2}
+                y2={b.y + b.h / 2}
+                stroke={
+                  b.featured
+                    ? "rgba(240,188,0,0.14)"
+                    : "rgba(243,255,251,0.03)"
+                }
+                strokeWidth={0.5}
+              />
+            </g>
+          ))}
         </motion.g>
 
-        {/* The Mall (tree-lined promenade) — two parallel dotted lines */}
-        <motion.line
-          x1={200}
-          y1={440}
-          x2={230}
-          y2={560}
-          stroke="rgba(243,255,251,0.2)"
-          strokeWidth={1}
-          strokeDasharray="1 3"
-          {...anim(0.95)}
-        />
-        <motion.line
-          x1={215}
-          y1={438}
-          x2={245}
-          y2={558}
-          stroke="rgba(243,255,251,0.2)"
-          strokeWidth={1}
-          strokeDasharray="1 3"
-          {...anim(1.0)}
-        />
-
-        {/* ─── Street grid (east of park) ───────────────────────────── */}
+        {/* ─── Avenues (vertical streets) ──────────────────────────── */}
         {V.avenues.map((a, i) => (
           <g key={a.name}>
             <motion.line
@@ -301,7 +338,7 @@ export default function EditorialMap({
             <text
               x={a.x + 5}
               y={22}
-              fill="rgba(243,255,251,0.45)"
+              fill="rgba(243,255,251,0.42)"
               fontFamily="Inter, system-ui, sans-serif"
               fontSize={9}
               fontWeight={500}
@@ -313,6 +350,7 @@ export default function EditorialMap({
           </g>
         ))}
 
+        {/* ─── Streets (horizontal) ─────────────────────────────── */}
         {V.streets.map((s, i) => (
           <g key={s.name}>
             <motion.line
@@ -322,8 +360,8 @@ export default function EditorialMap({
               y2={s.y}
               stroke={
                 s.highlight
-                  ? "rgba(240,188,0,0.32)"
-                  : "rgba(243,255,251,0.1)"
+                  ? "rgba(240,188,0,0.35)"
+                  : "rgba(243,255,251,0.14)"
               }
               strokeWidth={s.highlight ? 1.2 : 1}
               {...anim(0.5 + i * 0.04)}
@@ -348,7 +386,7 @@ export default function EditorialMap({
           </g>
         ))}
 
-        {/* ─── East River — hatched water band on the right ─────────── */}
+        {/* ─── East River hatch (unlabeled) ───────────────────────── */}
         <motion.rect
           x={V.riverLeftEdge}
           y={0}
@@ -365,7 +403,6 @@ export default function EditorialMap({
           fill="url(#waveHatch)"
           {...fade(0.5)}
         />
-        {/* FDR Drive — thin yellow highway line */}
         <motion.line
           x1={V.riverLeftEdge - 6}
           y1={0}
@@ -376,76 +413,8 @@ export default function EditorialMap({
           strokeDasharray="6 3"
           {...anim(0.7)}
         />
-        <motion.text
-          x={V.riverLeftEdge - 10}
-          y={V.height / 2}
-          fill="rgba(240,188,0,0.45)"
-          fontFamily="Inter, system-ui, sans-serif"
-          fontSize={8}
-          fontWeight={500}
-          letterSpacing={3}
-          textAnchor="end"
-          style={{ textTransform: "uppercase" }}
-          transform={`rotate(-90, ${V.riverLeftEdge - 10}, ${V.height / 2})`}
-          {...fade(0.8)}
-        >
-          FDR Drive
-        </motion.text>
-        <motion.text
-          x={V.width - 16}
-          y={V.height / 2}
-          fill="rgba(200,220,240,0.6)"
-          fontFamily="'Cormorant Garamond', Georgia, serif"
-          fontStyle="italic"
-          fontSize={20}
-          fontWeight={500}
-          letterSpacing={2}
-          textAnchor="end"
-          transform={`rotate(-90, ${V.width - 16}, ${V.height / 2})`}
-          {...fade(0.9)}
-        >
-          East River
-        </motion.text>
 
-        {/* ─── Landmarks ──────────────────────────────────────────── */}
-        {LANDMARKS.map((lm, i) => (
-          <motion.g key={lm.label} {...fade(1.3 + i * 0.12)}>
-            <circle
-              cx={lm.x}
-              cy={lm.y}
-              r={2.5}
-              fill="rgba(240,188,0,0.7)"
-              stroke="rgba(240,188,0,0.3)"
-              strokeWidth={3}
-            />
-            <text
-              x={lm.x + 8}
-              y={lm.y - 2}
-              fill="rgba(243,255,251,0.7)"
-              fontFamily="'Cormorant Garamond', Georgia, serif"
-              fontStyle="italic"
-              fontSize={13}
-              fontWeight={500}
-              letterSpacing={1}
-            >
-              {lm.label}
-            </text>
-            <text
-              x={lm.x + 8}
-              y={lm.y + 10}
-              fill="rgba(243,255,251,0.35)"
-              fontFamily="Inter, system-ui, sans-serif"
-              fontSize={7.5}
-              fontWeight={500}
-              letterSpacing={2}
-              style={{ textTransform: "uppercase" }}
-            >
-              {lm.caption}
-            </text>
-          </motion.g>
-        ))}
-
-        {/* ─── Boaz Studios marker ──────────────────────────────── */}
+        {/* ─── Boaz Studios marker ───────────────────────────────── */}
         <g transform={`translate(${V.marker.x}, ${V.marker.y})`}>
           {!reduce && (
             <motion.circle
@@ -549,7 +518,6 @@ export default function EditorialMap({
         </g>
       </svg>
 
-      {/* Overlay: caption + CTA */}
       <div className="absolute inset-0 pointer-events-none flex items-end p-6 md:p-10">
         <div className="flex items-end justify-between w-full">
           <div>
