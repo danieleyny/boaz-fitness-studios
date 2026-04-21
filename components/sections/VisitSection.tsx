@@ -1,5 +1,5 @@
 import SectionHeading from "@/components/ui/SectionHeading";
-import MapEmbed from "@/components/ui/MapEmbed";
+import EditorialMap from "@/components/ui/EditorialMap";
 import Reveal from "@/components/ui/Reveal";
 import { brand, home } from "@/lib/copy";
 
@@ -45,7 +45,7 @@ export default function VisitSection() {
               <Detail label="Address">
                 {brand.address}
                 <br />
-                New York, NY
+                New York, NY 10021
               </Detail>
               <Detail label="Hours">{brand.hours}</Detail>
               <Detail label="Phone">
@@ -68,7 +68,7 @@ export default function VisitSection() {
           </Reveal>
 
           <Reveal className="lg:col-span-7" delay={0.1}>
-            <MapEmbed height="560px" />
+            <EditorialMap height="560px" />
           </Reveal>
         </div>
       </div>

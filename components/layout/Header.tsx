@@ -9,7 +9,7 @@ import MobileMenu from "./MobileMenu";
 const NAV = [
   { href: "/about", label: "About" },
   { href: "/services", label: "Services" },
-  { href: "/members", label: "Members" },
+  { href: "/contact", label: "Membership" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -44,7 +44,7 @@ export default function Header() {
           >
             {NAV.map((item) => (
               <Link
-                key={item.href}
+                key={item.label}
                 href={item.href}
                 className="menu-link font-sans uppercase text-ivory/85 hover:text-ivory transition-colors duration-250"
                 style={{

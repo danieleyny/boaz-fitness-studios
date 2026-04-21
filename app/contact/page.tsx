@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Instagram } from "lucide-react";
+import { Instagram, Facebook } from "lucide-react";
 import Eyebrow from "@/components/ui/Eyebrow";
 import InquiryForm from "@/components/ui/InquiryForm";
-import MapEmbed from "@/components/ui/MapEmbed";
+import EditorialMap from "@/components/ui/EditorialMap";
 import Reveal from "@/components/ui/Reveal";
 import { brand, contact } from "@/lib/copy";
 
@@ -96,7 +96,7 @@ export default function ContactPage() {
                   <address className="not-italic text-ivory font-sans leading-loose">
                     {brand.address}
                     <br />
-                    New York, NY
+                    New York, NY 10021
                     <br />
                     <span className="text-ivory/70">{brand.hours}</span>
                   </address>
@@ -104,14 +104,28 @@ export default function ContactPage() {
 
                 <div>
                   <DetailLabel>Follow</DetailLabel>
-                  <a
-                    href={brand.instagramUrl}
-                    className="inline-flex items-center gap-3 text-ivory hover:text-gold transition-colors duration-250 font-sans"
-                    style={{ fontSize: "1rem" }}
-                  >
-                    <Instagram size={18} strokeWidth={1} />
-                    {brand.instagram}
-                  </a>
+                  <div className="flex flex-col gap-3">
+                    <a
+                      href={brand.instagramUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 text-ivory hover:text-gold transition-colors duration-250 font-sans"
+                      style={{ fontSize: "1rem" }}
+                    >
+                      <Instagram size={18} strokeWidth={1} />
+                      {brand.instagram}
+                    </a>
+                    <a
+                      href={brand.facebookUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-3 text-ivory hover:text-gold transition-colors duration-250 font-sans"
+                      style={{ fontSize: "1rem" }}
+                    >
+                      <Facebook size={18} strokeWidth={1} />
+                      {brand.facebook}
+                    </a>
+                  </div>
                 </div>
               </div>
             </Reveal>
@@ -121,7 +135,7 @@ export default function ContactPage() {
 
       {/* Full-width map */}
       <section className="relative bg-obsidian border-t border-line-soft">
-        <MapEmbed height="520px" />
+        <EditorialMap height="520px" />
       </section>
     </>
   );

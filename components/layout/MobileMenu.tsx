@@ -9,7 +9,7 @@ import Wordmark from "@/components/brand/Wordmark";
 const NAV = [
   { href: "/about", label: "About" },
   { href: "/services", label: "Services" },
-  { href: "/members", label: "Members" },
+  { href: "/contact", label: "Membership" },
   { href: "/contact", label: "Contact" },
 ];
 

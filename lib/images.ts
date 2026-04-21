@@ -20,8 +20,8 @@ export const images = {
     alt: "A trainer working one-to-one with an athlete in a dark studio",
   },
   pillarRecover: {
-    src: base("1571019613454-1cb2f99b2d8b", 1600, 80),
-    alt: "Warm wooden infrared sauna interior",
+    src: base("1540555700478-4be289fbecef", 1600, 80),
+    alt: "A quiet spa suite with timber, stone, and diffused low light",
   },
   pillarSocialize: {
     src: base("1519642918688-7e43b19245d8", 1600, 80),

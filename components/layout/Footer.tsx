@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Instagram, Facebook } from "lucide-react";
 import Wordmark from "@/components/brand/Wordmark";
 import Monogram from "@/components/brand/Monogram";
+import { brand } from "@/lib/copy";
 
 function Label({ children }: { children: React.ReactNode }) {
   return (
@@ -47,39 +49,66 @@ export default function Footer() {
           <div>
             <Label>Visit</Label>
             <address className="not-italic text-ivory/80 text-sm leading-loose">
-              [Street Address Placeholder]
+              {brand.address}
               <br />
-              New York, NY
+              New York, NY 10021
               <br />
-              Mon–Sun 5:00 — 23:00
+              {brand.hours}
             </address>
+            <a
+              href={brand.directionsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-block uppercase text-gold hover:text-[var(--gold-soft)] transition-colors duration-250"
+              style={{
+                fontSize: "0.6875rem",
+                letterSpacing: "0.25em",
+                fontWeight: 500,
+              }}
+            >
+              Get Directions →
+            </a>
           </div>
 
           <div>
             <Label>Connect</Label>
-            <ul className="text-ivory/80 text-sm space-y-2">
+            <ul className="text-ivory/80 text-sm space-y-3">
               <li>
                 <a
-                  href="https://instagram.com/boazfitnessstudios"
-                  className="hover:text-gold transition-colors duration-250"
+                  href={brand.instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 hover:text-gold transition-colors duration-250"
                 >
-                  @boazfitnessstudios
+                  <Instagram size={14} strokeWidth={1} />
+                  {brand.instagram}
                 </a>
               </li>
               <li>
                 <a
-                  href="mailto:boaz@boazstudios.com"
-                  className="hover:text-gold transition-colors duration-250"
+                  href={brand.facebookUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 hover:text-gold transition-colors duration-250"
                 >
-                  boaz@boazstudios.com
+                  <Facebook size={14} strokeWidth={1} />
+                  {brand.facebook}
                 </a>
               </li>
               <li>
                 <a
-                  href="tel:9178060484"
+                  href={`mailto:${brand.email}`}
                   className="hover:text-gold transition-colors duration-250"
                 >
-                  917.806.0484
+                  {brand.email}
+                </a>
+              </li>
+              <li>
+                <a
+                  href={`tel:${brand.phoneHref}`}
+                  className="hover:text-gold transition-colors duration-250"
+                >
+                  {brand.phone}
                 </a>
               </li>
             </ul>

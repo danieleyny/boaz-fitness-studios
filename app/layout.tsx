@@ -4,6 +4,7 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import PageTransition from "@/components/layout/PageTransition";
+import IntroAnimation from "@/components/layout/IntroAnimation";
 
 const display = Cormorant_Garamond({
   subsets: ["latin"],
@@ -38,6 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${display.variable} ${sans.variable}`}>
       <body className="bg-obsidian text-ivory antialiased">
+        <IntroAnimation />
         <Header />
         <PageTransition>
           <main>{children}</main>

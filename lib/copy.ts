@@ -8,9 +8,14 @@ export const brand = {
   email: "boaz@boazstudios.com",
   phone: "917.806.0484",
   phoneHref: "9178060484",
-  instagram: "@boazfitnessstudios",
-  instagramUrl: "https://instagram.com/boazfitnessstudios",
-  address: "[Street Address Placeholder]",
+  instagram: "@boazstudios73",
+  instagramUrl: "https://www.instagram.com/boazstudios73/",
+  facebook: "/BoazStudios",
+  facebookUrl: "https://www.facebook.com/BoazStudios/",
+  address: "29 East 73rd Street",
+  addressFull: "29 East 73rd Street, New York, NY 10021",
+  directionsUrl:
+    "https://www.google.com/maps/dir/?api=1&destination=29+East+73rd+Street+New+York+NY+10021",
   hours: "Mon–Sun 5:00 — 23:00",
 };
 
