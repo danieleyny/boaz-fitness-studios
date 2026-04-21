@@ -3,21 +3,17 @@
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 
-const SESSION_KEY = "boaz_intro_shown_v1";
-
 export default function IntroAnimation() {
   const [mounted, setMounted] = useState(false);
   const [visible, setVisible] = useState(false);
   const reduce = useReducedMotion();
 
-  // Avoid hydration mismatch: decide visibility only on client after mount
+  // The component sits in the root layout, so it remounts only on a full page
+  // load (initial visit, hard refresh). Client-side route changes preserve this
+  // instance, so in-memory state alone is enough — no sessionStorage needed.
   useEffect(() => {
     setMounted(true);
-    const seen =
-      typeof window !== "undefined" && sessionStorage.getItem(SESSION_KEY);
-    if (!seen) {
-      setVisible(true);
-    }
+    setVisible(true);
   }, []);
 
   useEffect(() => {
@@ -27,15 +23,10 @@ export default function IntroAnimation() {
 
     const total = reduce ? 900 : 4200;
     const id = window.setTimeout(() => {
-      sessionStorage.setItem(SESSION_KEY, "1");
       setVisible(false);
     }, total);
 
-    // Allow skip on any key / click
-    const skip = () => {
-      sessionStorage.setItem(SESSION_KEY, "1");
-      setVisible(false);
-    };
+    const skip = () => setVisible(false);
     window.addEventListener("keydown", skip, { once: true });
     window.addEventListener("click", skip, { once: true });
 
@@ -232,10 +223,7 @@ export default function IntroAnimation() {
 
           {/* Skip hint */}
           <motion.button
-            onClick={() => {
-              sessionStorage.setItem(SESSION_KEY, "1");
-              setVisible(false);
-            }}
+            onClick={() => setVisible(false)}
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.45 }}
             transition={{ delay: 1.8, duration: 0.6 }}

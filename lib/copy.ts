@@ -203,25 +203,65 @@ export const services = {
           name: "Private 1-on-1 Coaching",
           description:
             "Hour-long sessions with a specialist matched to your goals.",
+          details:
+            "Every engagement begins with a sixty-minute assessment — movement screen, training history, a conversation about what you are trying to protect and what you are trying to build. From there, programming is revised weekly and delivered in private, by the same coach, for as long as you are with us.",
+          highlights: [
+            "60-minute sessions with your assigned specialist",
+            "Bi-weekly program reviews and quarterly physical assessments",
+            "No coach rotations — continuity is the point",
+          ],
+          session: "60 min · Private floor",
         },
         {
           name: "Strength & Conditioning",
           description:
             "Programming for athletic capacity and long-term durability.",
+          details:
+            "A blended format that develops raw strength, positional power, and aerobic capacity — all in a room that feels more like a laboratory than a gym. Designed for members who want to age into their strongest years, not out of them.",
+          highlights: [
+            "Force plates and velocity-based training",
+            "Periodized blocks written for your next decade",
+            "Readiness-driven load adjustments, not ego-driven ones",
+          ],
+          session: "60 min · Training floor",
         },
         {
           name: "Pilates",
           description: "Reformer and mat work in a private studio.",
+          details:
+            "A classical Pilates practice on reformers and cadillacs — rebuilt for clients with old injuries, new ambitions, or simply too much desk time. One studio, one instructor, one body at a time.",
+          highlights: [
+            "Classical reformer, cadillac, and chair apparatus",
+            "Postural rehabilitation and core-sequenced flow work",
+            "Private studio — never shared class time",
+          ],
+          session: "50 min · Private Pilates studio",
         },
         {
           name: "Martial Arts",
           description:
             "Boxing, Muay Thai, and Brazilian Jiu-Jitsu fundamentals.",
+          details:
+            "Technical instruction from competitive backgrounds, in a dedicated mat room with a private ring. Whether you are taking your first class or sharpening a ten-year practice, sessions are tailored to your pace — no spectators, no ranks on display.",
+          highlights: [
+            "Boxing and Muay Thai on private bags",
+            "BJJ fundamentals and situational drilling",
+            "Optional conditioning rounds built around the sport",
+          ],
+          session: "60 min · Private ring & mat",
         },
         {
           name: "Yoga",
           description:
             "Private and small-group sessions, including restorative formats.",
+          details:
+            "A quiet room, a senior instructor, and a practice meant to restore rather than perform. Vinyasa, yin, and restorative formats are available privately or in a small group capped at four.",
+          highlights: [
+            "Vinyasa, yin, and restorative styles",
+            "Private or four-person small group",
+            "Heated and unheated studio options",
+          ],
+          session: "60 min · Serenity studio",
         },
       ],
     },
@@ -234,27 +274,75 @@ export const services = {
         {
           name: "Infrared Sauna",
           description: "Single-occupancy cabins with circadian lighting.",
+          details:
+            "Our infrared cabins are single-occupancy, clad in charred cedar, and tuned to a full-spectrum infrared profile. Circadian lighting dims as the session deepens. A private robe and a carafe of cold electrolyte water are set out before you arrive.",
+          highlights: [
+            "Full-spectrum infrared (near, mid, far)",
+            "Private cabin — never shared",
+            "Charred-cedar interior, circadian amber lighting",
+          ],
+          session: "30–45 min · Private cabin",
         },
         {
           name: "Cold Plunge",
           description: "Private booths, 38–42°F.",
+          details:
+            "Private plunge booths chilled to a calibrated 38–42°F, with adjacent warm rinse and a quiet recovery bench. No queue, no shared basin, no spectators — just the breath, the cold, and the clock.",
+          highlights: [
+            "38–42°F water held to ±1°F",
+            "Private booth with adjacent warm rinse",
+            "Guided breath protocol available on request",
+          ],
+          session: "2–6 min · Private booth",
         },
         {
           name: "Therapeutic Massage",
           description: "Sports, deep-tissue, and lymphatic.",
+          details:
+            "A practitioner roster that includes orthopedic-trained bodyworkers and manual lymphatic drainage specialists. Session notes are kept privately so the work carries from one appointment to the next.",
+          highlights: [
+            "Sports, deep-tissue, Swedish, and lymphatic",
+            "Continuity notes kept by your practitioner",
+            "Heated tables, private suites, silent corridors",
+          ],
+          session: "60 or 90 min · Private suite",
         },
         {
           name: "Assisted Stretch",
           description:
             "30 and 60-minute formats with a movement specialist.",
+          details:
+            "A guided passive and PNF stretching session led by a movement specialist who has read your training notes. Designed to pair with lifting days or serve as a standalone reset.",
+          highlights: [
+            "PNF, passive, and active-isolated techniques",
+            "Integrated with your training program",
+            "30 or 60-minute formats",
+          ],
+          session: "30–60 min · Stretch suite",
         },
         {
           name: "Compression Therapy",
           description: "Full-leg pneumatic compression in private rooms.",
+          details:
+            "Full-leg and hip pneumatic compression in a private, reclined room. Pair it with a sauna or infrared session to turn sixty minutes into a full reset.",
+          highlights: [
+            "Full-leg, hip, and arm compression boots",
+            "Private room with reclined seating",
+            "Pairs cleanly with sauna or massage",
+          ],
+          session: "20–30 min · Private recovery room",
         },
         {
           name: "IV Therapy",
           description: "Custom drips administered by a registered nurse.",
+          details:
+            "Custom-formulated intravenous protocols administered in-house by a registered nurse — hydration, performance, immune, and NAD+ formulations are available. Every protocol is reviewed by our medical director before administration.",
+          highlights: [
+            "Hydration, performance, immune, NAD+",
+            "Administered by an RN in a private suite",
+            "Medical-director oversight for every protocol",
+          ],
+          session: "30–60 min · Medical suite",
         },
       ],
     },
@@ -266,18 +354,50 @@ export const services = {
         {
           name: "Members Lounge",
           description: "Library, fireplace, and quiet workspace.",
+          details:
+            "A timber-and-leather room with a working fireplace, a stocked library, and a small number of private banquettes. The room is quiet by design — a good place to finish a morning or begin an afternoon.",
+          highlights: [
+            "Working fireplace and library",
+            "Private banquettes for conversation",
+            "Phones permitted; calls taken outside",
+          ],
+          session: "All hours",
         },
         {
           name: "Cold-Pressed Juice Bar",
           description: "Daily menu of organic juices, broths, and tonics.",
+          details:
+            "A small daily menu of cold-pressed juices, bone broths, adaptogenic tonics, and espresso. Ingredients are sourced from Hudson Valley growers whenever the season allows.",
+          highlights: [
+            "Organic cold-pressed juices and tonics",
+            "House bone broth and espresso",
+            "Seasonal Hudson Valley sourcing",
+          ],
+          session: "5:00 – 19:00 daily",
         },
         {
           name: "Member Events",
           description: "Wine evenings, longevity lectures, off-site retreats.",
+          details:
+            "A small calendar of curated evenings — wine tastings, longevity and medicine talks from our network, and periodic off-site retreats. RSVPs are private to the member.",
+          highlights: [
+            "Wine evenings and longevity lectures",
+            "Annual members-only retreat",
+            "Private RSVPs; no public guest lists",
+          ],
+          session: "Select evenings",
         },
         {
           name: "Guest Privileges",
           description: "Two complimentary guest passes per quarter.",
+          details:
+            "Every membership includes two complimentary guest passes each quarter. Guests are hosted for a full day of training and recovery and are introduced personally by a member of our team.",
+          highlights: [
+            "Two guest passes per quarter",
+            "Full access to training and recovery",
+            "Personal introduction to the facility",
+          ],
+          session: "By reservation",
         },
       ],
     },

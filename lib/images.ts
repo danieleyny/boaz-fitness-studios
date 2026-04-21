@@ -4,10 +4,12 @@ const base = (id: string, w = 1920, q = 80) =>
   `https://images.unsplash.com/photo-${id}?w=${w}&q=${q}&fm=webp&auto=format&fit=crop`;
 
 export const images = {
-  // Home — hero: dim, atmospheric gym interior
+  // Home — hero: moody, low-light recovery detail (charred-cedar sauna interior,
+  // warm amber underlighting on the bench). Speaks to the specialty offering
+  // rather than a generic training floor.
   homeHero: {
-    src: base("1540497077202-7c8a3999166f", 2400, 80),
-    alt: "Dim training floor with shafts of low light raking across stone",
+    src: base("1770625468096-ff53cd24ee38", 2400, 80),
+    alt: "Charred-cedar sauna interior with warm amber underlighting and sculptural wooden headrest",
   },
   // Home — Section 02 detail: a single editorial detail shot
   homeDetail: {
