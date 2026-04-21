@@ -5,21 +5,21 @@ import { ArrowUpRight } from "lucide-react";
 import { brand } from "@/lib/copy";
 
 /**
- * An illustrated Upper East Side map rendered as SVG.
- * Clicking the surface opens Google Maps directions with the destination
- * pre-filled; Google auto-detects the user's current location as origin
- * (with their permission).
+ * Upper East Side — top-down architectural plan view.
  *
- * Geometry is stylized, not surveyed — proportions are tuned for legibility.
- * The map reads as a dense NYC street-plan: Central Park on the left, the
- * avenue/street grid filled with building-block tiles in between, and the
- * East River skirting the right edge. The Boaz marker sits between 5th and
- * Madison on 73rd.
+ * Each avenue-street block is filled with individual building footprints:
+ * brownstone rows on the side-street frontages (west of Park Ave), prewar
+ * apartment buildings on the east avenues (3rd / 2nd / 1st), and larger
+ * corner buildings at the intersections. Central Park sits on the left with
+ * the Lake and winding paths; the East River laps the right edge.
+ *
+ * Generally accurate to the neighborhood, stylized for legibility. The Boaz
+ * footprint is highlighted in gold between 5th and Madison on 73rd.
  */
 
 const V = {
   width: 1000,
-  height: 600,
+  height: 620,
   avenues: [
     { x: 305, name: "5th Ave" },
     { x: 390, name: "Madison" },
@@ -39,20 +39,19 @@ const V = {
     { y: 460, name: "71st St" },
     { y: 525, name: "70th St" },
   ],
-  // Boaz marker — between 5th and Madison, on 73rd Street
-  marker: { x: 347, y: 330 },
-  // Park extends from 0 → ~290 horizontally across full height
   parkRightEdge: 290,
   riverLeftEdge: 905,
-  // Virtual top/bottom so edge rows have a clean boundary
-  topEdge: 0,
-  bottomEdge: 600,
 };
 
-// Small deterministic PRNG so building subdivisions don't shift across
-// re-renders or server/client boundaries (would cause hydration mismatches).
+// Boaz footprint: south edge of the 74–73rd block, a few lots east of 5th Ave.
+// Facing south onto 73rd Street.
+const BOAZ = { x: 326, y: 318, w: 7, h: 12 };
+const MARKER = { x: BOAZ.x + BOAZ.w / 2, y: BOAZ.y + BOAZ.h / 2 };
+
+// Seeded PRNG so building layouts are stable between SSR and CSR (and across
+// re-renders). Building widths/heights vary per block without hydration drift.
 function rng(seed: number) {
-  let s = seed % 2147483647;
+  let s = Math.abs(seed) % 2147483647;
   if (s <= 0) s += 2147483646;
   return () => {
     s = (s * 16807) % 2147483647;
@@ -60,59 +59,177 @@ function rng(seed: number) {
   };
 }
 
-// Enumerate every block cell (between adjacent avenues × adjacent streets,
-// plus the top and bottom edge rows). Dropping the sliver east of 1st Ave
-// since that's essentially FDR territory, not city blocks.
-function buildBlocks() {
-  const cols: { x1: number; x2: number }[] = [];
-  for (let i = 0; i < V.avenues.length - 1; i++) {
-    cols.push({ x1: V.avenues[i].x, x2: V.avenues[i + 1].x });
-  }
-  const rows: { y1: number; y2: number }[] = [];
-  rows.push({ y1: V.topEdge, y2: V.streets[0].y });
-  for (let i = 0; i < V.streets.length - 1; i++) {
-    rows.push({ y1: V.streets[i].y, y2: V.streets[i + 1].y });
-  }
-  rows.push({ y1: V.streets[V.streets.length - 1].y, y2: V.bottomEdge });
-  const out: {
-    key: string;
-    x: number;
-    y: number;
-    w: number;
-    h: number;
-    featured: boolean;
-    lots: number[];
-  }[] = [];
-  cols.forEach((c, ci) => {
-    rows.forEach((r, ri) => {
-      // The marker block — between 5th (col 0) and Madison, 73rd–72nd
-      // (streets[4] lies at y=330, which is rows[5] top). 73rd has index 4
-      // in V.streets, so the block south of 73rd is rows[5].
-      const featured = ci === 0 && ri === 5;
-      const r1 = rng(ci * 100 + ri);
-      const lotCount = 2 + Math.floor(r1() * 2); // 2–3 sub-lots
-      const lots: number[] = [];
-      for (let k = 1; k <= lotCount; k++) {
-        lots.push(k / (lotCount + 1) + (r1() - 0.5) * 0.08);
-      }
-      out.push({
-        key: `b-${ci}-${ri}`,
-        x: c.x1 + 3,
-        y: r.y1 + 3,
-        w: c.x2 - c.x1 - 6,
-        h: r.y2 - r.y1 - 6,
-        featured,
-        lots,
-      });
+type Building = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  kind: "brownstone" | "corner" | "apartment";
+};
+
+function blockBuildings(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  colIdx: number,
+  rowIdx: number
+): Building[] {
+  const w = x2 - x1;
+  const h = y2 - y1;
+  if (w < 8 || h < 8) return [];
+  const r = rng(colIdx * 1000 + rowIdx * 37 + 91);
+  const out: Building[] = [];
+
+  // UES character by column: west avenues (5th / Madison / Park) are mostly
+  // townhouses & brownstones; east avenues (Lex / 3rd / 2nd / 1st) shift to
+  // prewar and modern apartment towers.
+  const isWest = colIdx <= 1;
+  const isEast = colIdx >= 4;
+
+  const cornerSize = Math.min(11, Math.min(w, h) * 0.22);
+  const brownstoneW = isWest ? 6 : isEast ? 9 : 7;
+  const rowDepth = Math.min(h / 2 - 1.6, isEast ? 18 : 14);
+  const colDepth = Math.min(w / 2 - 1.6, isEast ? 18 : 14);
+
+  // Corner buildings (4 per block, slightly larger)
+  for (const c of [
+    { x: x1 + 0.5, y: y1 + 0.5 },
+    { x: x2 - cornerSize - 0.5, y: y1 + 0.5 },
+    { x: x1 + 0.5, y: y2 - cornerSize - 0.5 },
+    { x: x2 - cornerSize - 0.5, y: y2 - cornerSize - 0.5 },
+  ]) {
+    out.push({
+      x: c.x,
+      y: c.y,
+      w: cornerSize,
+      h: cornerSize,
+      kind: "corner",
     });
-  });
+  }
+
+  // Top row (facing north side street)
+  const edgeS = x1 + cornerSize + 1;
+  const edgeE = x2 - cornerSize - 1;
+  if (edgeE - edgeS > 4) {
+    const count = Math.max(2, Math.floor((edgeE - edgeS) / brownstoneW));
+    const bw = (edgeE - edgeS) / count;
+    for (let i = 0; i < count; i++) {
+      const bh = rowDepth * (0.72 + r() * 0.38);
+      const isApt = isEast && r() > 0.58;
+      out.push({
+        x: edgeS + i * bw + 0.3,
+        y: y1 + 0.5,
+        w: bw - 0.6,
+        h: isApt ? bh * 1.15 : bh,
+        kind: isApt ? "apartment" : "brownstone",
+      });
+    }
+  }
+
+  // Bottom row (facing south side street)
+  if (edgeE - edgeS > 4) {
+    const count = Math.max(2, Math.floor((edgeE - edgeS) / brownstoneW));
+    const bw = (edgeE - edgeS) / count;
+    for (let i = 0; i < count; i++) {
+      const bh = rowDepth * (0.72 + r() * 0.38);
+      const isApt = isEast && r() > 0.58;
+      const fh = isApt ? bh * 1.15 : bh;
+      out.push({
+        x: edgeS + i * bw + 0.3,
+        y: y2 - fh - 0.5,
+        w: bw - 0.6,
+        h: fh,
+        kind: isApt ? "apartment" : "brownstone",
+      });
+    }
+  }
+
+  // Left edge (along west avenue)
+  const sideS = y1 + cornerSize + 1;
+  const sideE = y2 - cornerSize - 1;
+  if (sideE - sideS > 4 && h > 48) {
+    const count = Math.max(2, Math.floor((sideE - sideS) / brownstoneW));
+    const bh = (sideE - sideS) / count;
+    for (let i = 0; i < count; i++) {
+      const bw = colDepth * (0.6 + r() * 0.45);
+      out.push({
+        x: x1 + 0.5,
+        y: sideS + i * bh + 0.3,
+        w: bw,
+        h: bh - 0.6,
+        kind: isEast ? "apartment" : "brownstone",
+      });
+    }
+  }
+
+  // Right edge (along east avenue)
+  if (sideE - sideS > 4 && h > 48) {
+    const count = Math.max(2, Math.floor((sideE - sideS) / brownstoneW));
+    const bh = (sideE - sideS) / count;
+    for (let i = 0; i < count; i++) {
+      const bw = colDepth * (0.6 + r() * 0.45);
+      out.push({
+        x: x2 - bw - 0.5,
+        y: sideS + i * bh + 0.3,
+        w: bw,
+        h: bh - 0.6,
+        kind: isEast ? "apartment" : "brownstone",
+      });
+    }
+  }
+
   return out;
 }
 
-const BLOCKS = buildBlocks();
+function allBuildings(): Building[] {
+  const cols = V.avenues.length - 1;
+  const rows: { y1: number; y2: number }[] = [];
+  rows.push({ y1: 0, y2: V.streets[0].y });
+  for (let i = 0; i < V.streets.length - 1; i++) {
+    rows.push({ y1: V.streets[i].y, y2: V.streets[i + 1].y });
+  }
+  rows.push({ y1: V.streets[V.streets.length - 1].y, y2: V.height });
+  const all: Building[] = [];
+  for (let c = 0; c < cols; c++) {
+    for (let ri = 0; ri < rows.length; ri++) {
+      all.push(
+        ...blockBuildings(
+          V.avenues[c].x,
+          rows[ri].y1,
+          V.avenues[c + 1].x,
+          rows[ri].y2,
+          c,
+          ri
+        )
+      );
+    }
+  }
+  return all;
+}
+
+const BUILDINGS = allBuildings();
+
+// Styling per building kind (fill opacity, stroke opacity, stroke width)
+const KIND_STYLES = {
+  brownstone: { fill: 0.05, stroke: 0.22, sw: 0.55 },
+  corner: { fill: 0.075, stroke: 0.3, sw: 0.7 },
+  apartment: { fill: 0.085, stroke: 0.32, sw: 0.75 },
+} as const;
+
+// Boaz overlaps a generated building near 5th/73rd — hide any generated rect
+// that would clash with the highlighted footprint.
+function overlapsBoaz(b: Building) {
+  return (
+    b.x < BOAZ.x + BOAZ.w + 1 &&
+    b.x + b.w > BOAZ.x - 1 &&
+    b.y < BOAZ.y + BOAZ.h + 1 &&
+    b.y + b.h > BOAZ.y - 1
+  );
+}
 
 export default function EditorialMap({
-  height = "620px",
+  height = "640px",
   className = "",
 }: {
   height?: string;
@@ -164,8 +281,8 @@ export default function EditorialMap({
       >
         <defs>
           <radialGradient id="parkFill" cx="0.4" cy="0.5" r="0.8">
-            <stop offset="0%" stopColor="rgba(122,168,112,0.18)" />
-            <stop offset="60%" stopColor="rgba(122,168,112,0.08)" />
+            <stop offset="0%" stopColor="rgba(122,168,112,0.2)" />
+            <stop offset="60%" stopColor="rgba(122,168,112,0.09)" />
             <stop offset="100%" stopColor="rgba(122,168,112,0.02)" />
           </radialGradient>
           <linearGradient id="riverFill" x1="0" y1="0" x2="1" y2="0">
@@ -174,7 +291,7 @@ export default function EditorialMap({
             <stop offset="100%" stopColor="rgba(104,144,176,0.22)" />
           </linearGradient>
           <radialGradient id="lakeFill" cx="0.5" cy="0.5" r="0.5">
-            <stop offset="0%" stopColor="rgba(104,144,176,0.4)" />
+            <stop offset="0%" stopColor="rgba(104,144,176,0.42)" />
             <stop offset="100%" stopColor="rgba(104,144,176,0.1)" />
           </radialGradient>
           <radialGradient id="markerPulse" cx="0.5" cy="0.5" r="0.5">
@@ -182,8 +299,12 @@ export default function EditorialMap({
             <stop offset="60%" stopColor="rgba(240,188,0,0.1)" />
             <stop offset="100%" stopColor="rgba(240,188,0,0)" />
           </radialGradient>
-          <filter id="markerGlow" x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur stdDeviation="4" />
+          <radialGradient id="boazGlow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0%" stopColor="rgba(240,188,0,0.9)" />
+            <stop offset="100%" stopColor="rgba(240,188,0,0.2)" />
+          </radialGradient>
+          <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="3" />
           </filter>
           <pattern
             id="waveHatch"
@@ -204,126 +325,85 @@ export default function EditorialMap({
 
         <rect x="0" y="0" width={V.width} height={V.height} fill="var(--obsidian)" />
 
-        {/* ─── Central Park (shape only, unlabeled) ─────────────────── */}
+        {/* ─── Central Park ─────────────────────────────────────────── */}
         <motion.path
           d="
             M 0 10
             C 70 18, 140 28, 210 46
             C 260 64, 288 120, 285 200
             C 282 280, 294 340, 286 420
-            C 274 500, 230 560, 160 580
-            C 100 592, 40 588, 0 592
+            C 274 500, 230 560, 160 590
+            C 100 602, 40 598, 0 604
             Z
           "
           fill="url(#parkFill)"
-          stroke="rgba(240,188,0,0.32)"
+          stroke="rgba(240,188,0,0.34)"
           strokeWidth={1}
           strokeDasharray="3 5"
           {...anim(0.1)}
         />
+        {/* Winding paths */}
         <motion.path
-          d="M 0 420 C 60 380, 120 360, 180 320 S 240 240, 270 180"
+          d="M 0 440 C 60 400, 120 378, 180 340 S 240 260, 272 196"
           fill="none"
-          stroke="rgba(243,255,251,0.12)"
+          stroke="rgba(243,255,251,0.14)"
           strokeWidth={1}
           strokeDasharray="2 4"
           {...anim(0.55)}
         />
         <motion.path
-          d="M 20 120 C 80 140, 140 180, 200 220 S 260 320, 270 400"
+          d="M 20 120 C 80 140, 140 180, 200 220 S 258 322, 268 400"
           fill="none"
-          stroke="rgba(243,255,251,0.08)"
+          stroke="rgba(243,255,251,0.1)"
           strokeWidth={1}
           strokeDasharray="2 4"
           {...anim(0.65)}
         />
         <motion.path
-          d="M 40 540 C 110 480, 190 440, 250 380"
+          d="M 40 560 C 110 500, 190 460, 248 400"
           fill="none"
-          stroke="rgba(243,255,251,0.08)"
+          stroke="rgba(243,255,251,0.1)"
           strokeWidth={1}
           strokeDasharray="2 4"
           {...anim(0.7)}
         />
-        {/* Lake — unlabeled water body */}
+        {/* The Lake — irregular organic water body */}
         <motion.path
           d="
-            M 80 340
-            C 60 320, 70 290, 110 288
-            C 160 284, 220 300, 240 338
-            C 250 370, 220 392, 170 388
-            C 120 384, 95 362, 80 340
+            M 50 240
+            C 40 212, 80 198, 130 206
+            C 180 214, 226 232, 244 268
+            C 256 302, 240 338, 200 346
+            C 160 354, 114 340, 78 322
+            C 52 308, 44 274, 50 240
             Z
           "
           fill="url(#lakeFill)"
-          stroke="rgba(104,144,176,0.45)"
+          stroke="rgba(104,144,176,0.5)"
           strokeWidth={0.8}
           {...anim(0.8)}
         />
-        {/* Small reservoir hint — upper left */}
+        {/* Conservatory Water — smaller pond, asymmetric */}
         <motion.path
-          d="M 60 90 C 50 70, 90 64, 140 70 C 200 80, 230 110, 210 140 C 180 165, 120 160, 90 140 C 65 122, 62 108, 60 90 Z"
+          d="M 140 108 C 132 96, 160 92, 184 100 C 204 110, 206 128, 190 138 C 172 146, 150 140, 140 124 Z"
           fill="url(#lakeFill)"
-          stroke="rgba(104,144,176,0.35)"
+          stroke="rgba(104,144,176,0.38)"
           strokeWidth={0.6}
           {...anim(0.85)}
         />
+        {/* A scatter of park greenspace dots (softens the park interior) */}
+        {PARK_SPECKS.map((p, i) => (
+          <motion.circle
+            key={`pk-${i}`}
+            cx={p.x}
+            cy={p.y}
+            r={p.r}
+            fill="rgba(122,168,112,0.22)"
+            {...fade(1.0 + i * 0.015)}
+          />
+        ))}
 
-        {/* ─── City blocks (stylized building tiles) ────────────────── */}
-        <motion.g {...fade(0.2)}>
-          {BLOCKS.map((b) => (
-            <g key={b.key}>
-              <rect
-                x={b.x}
-                y={b.y}
-                width={b.w}
-                height={b.h}
-                fill={
-                  b.featured
-                    ? "rgba(240,188,0,0.06)"
-                    : "rgba(243,255,251,0.022)"
-                }
-                stroke={
-                  b.featured
-                    ? "rgba(240,188,0,0.45)"
-                    : "rgba(240,188,0,0.08)"
-                }
-                strokeWidth={b.featured ? 0.8 : 0.5}
-              />
-              {/* Lot subdivisions — thin vertical strokes suggesting buildings */}
-              {b.lots.map((f, i) => (
-                <line
-                  key={i}
-                  x1={b.x + b.w * f}
-                  x2={b.x + b.w * f}
-                  y1={b.y + 3}
-                  y2={b.y + b.h - 3}
-                  stroke={
-                    b.featured
-                      ? "rgba(240,188,0,0.18)"
-                      : "rgba(243,255,251,0.05)"
-                  }
-                  strokeWidth={0.5}
-                />
-              ))}
-              {/* Mid-block service mews — horizontal hairline */}
-              <line
-                x1={b.x + 4}
-                x2={b.x + b.w - 4}
-                y1={b.y + b.h / 2}
-                y2={b.y + b.h / 2}
-                stroke={
-                  b.featured
-                    ? "rgba(240,188,0,0.14)"
-                    : "rgba(243,255,251,0.03)"
-                }
-                strokeWidth={0.5}
-              />
-            </g>
-          ))}
-        </motion.g>
-
-        {/* ─── Avenues (vertical streets) ──────────────────────────── */}
+        {/* ─── Avenue grid lines (thicker — avenues are wider) ─────── */}
         {V.avenues.map((a, i) => (
           <g key={a.name}>
             <motion.line
@@ -331,14 +411,14 @@ export default function EditorialMap({
               y1={0}
               x2={a.x}
               y2={V.height}
-              stroke="rgba(240,188,0,0.22)"
-              strokeWidth={1}
-              {...anim(0.25 + i * 0.05)}
+              stroke="rgba(240,188,0,0.28)"
+              strokeWidth={1.4}
+              {...anim(0.25 + i * 0.04)}
             />
             <text
               x={a.x + 5}
               y={22}
-              fill="rgba(243,255,251,0.42)"
+              fill="rgba(243,255,251,0.45)"
               fontFamily="Inter, system-ui, sans-serif"
               fontSize={9}
               fontWeight={500}
@@ -350,7 +430,7 @@ export default function EditorialMap({
           </g>
         ))}
 
-        {/* ─── Streets (horizontal) ─────────────────────────────── */}
+        {/* ─── Street grid lines (thinner — side streets) ──────────── */}
         {V.streets.map((s, i) => (
           <g key={s.name}>
             <motion.line
@@ -360,10 +440,10 @@ export default function EditorialMap({
               y2={s.y}
               stroke={
                 s.highlight
-                  ? "rgba(240,188,0,0.35)"
+                  ? "rgba(240,188,0,0.38)"
                   : "rgba(243,255,251,0.14)"
               }
-              strokeWidth={s.highlight ? 1.2 : 1}
+              strokeWidth={s.highlight ? 1.2 : 0.8}
               {...anim(0.5 + i * 0.04)}
             />
             <text
@@ -373,7 +453,7 @@ export default function EditorialMap({
               fill={
                 s.highlight
                   ? "rgba(240,188,0,0.75)"
-                  : "rgba(243,255,251,0.35)"
+                  : "rgba(243,255,251,0.36)"
               }
               fontFamily="Inter, system-ui, sans-serif"
               fontSize={9}
@@ -386,7 +466,27 @@ export default function EditorialMap({
           </g>
         ))}
 
-        {/* ─── East River hatch (unlabeled) ───────────────────────── */}
+        {/* ─── Building footprints ────────────────────────────────── */}
+        <motion.g {...fade(0.4)}>
+          {BUILDINGS.map((b, i) => {
+            if (overlapsBoaz(b)) return null;
+            const s = KIND_STYLES[b.kind];
+            return (
+              <rect
+                key={i}
+                x={b.x}
+                y={b.y}
+                width={b.w}
+                height={b.h}
+                fill={`rgba(243,255,251,${s.fill})`}
+                stroke={`rgba(240,188,0,${s.stroke})`}
+                strokeWidth={s.sw}
+              />
+            );
+          })}
+        </motion.g>
+
+        {/* ─── East River ──────────────────────────────────────────── */}
         <motion.rect
           x={V.riverLeftEdge}
           y={0}
@@ -403,59 +503,81 @@ export default function EditorialMap({
           fill="url(#waveHatch)"
           {...fade(0.5)}
         />
+        {/* FDR Drive — thin dashed hairline along the west bank */}
         <motion.line
           x1={V.riverLeftEdge - 6}
           y1={0}
           x2={V.riverLeftEdge - 6}
           y2={V.height}
-          stroke="rgba(240,188,0,0.18)"
+          stroke="rgba(240,188,0,0.2)"
           strokeWidth={1}
           strokeDasharray="6 3"
           {...anim(0.7)}
         />
 
-        {/* ─── Boaz Studios marker ───────────────────────────────── */}
-        <g transform={`translate(${V.marker.x}, ${V.marker.y})`}>
+        {/* ─── Boaz footprint — highlighted ─────────────────────────── */}
+        <motion.g {...fade(1.15)}>
+          <rect
+            x={BOAZ.x - 0.8}
+            y={BOAZ.y - 0.8}
+            width={BOAZ.w + 1.6}
+            height={BOAZ.h + 1.6}
+            fill="rgba(240,188,0,0.3)"
+            stroke="var(--gold)"
+            strokeWidth={1.1}
+            filter="url(#softGlow)"
+          />
+          <rect
+            x={BOAZ.x}
+            y={BOAZ.y}
+            width={BOAZ.w}
+            height={BOAZ.h}
+            fill="rgba(240,188,0,0.55)"
+            stroke="var(--gold)"
+            strokeWidth={1.2}
+          />
+        </motion.g>
+
+        {/* ─── Marker + label ──────────────────────────────────────── */}
+        <g transform={`translate(${MARKER.x}, ${MARKER.y})`}>
           {!reduce && (
             <motion.circle
-              r={42}
+              r={44}
               fill="url(#markerPulse)"
-              animate={{ scale: [0.85, 1.25, 0.85], opacity: [0.7, 0.15, 0.7] }}
+              animate={{ scale: [0.85, 1.25, 0.85], opacity: [0.75, 0.18, 0.75] }}
               transition={{ duration: 3.2, repeat: Infinity, ease: "easeInOut" }}
             />
           )}
           <motion.circle
-            r={15}
+            r={18}
             fill="none"
-            stroke="var(--gold)"
-            strokeWidth={1}
+            stroke="rgba(240,188,0,0.55)"
+            strokeWidth={0.9}
             initial={{ scale: 0, opacity: 0 }}
             whileInView={{ scale: 1, opacity: 1 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.8, delay: 1.0, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.8, delay: 1.3, ease: [0.22, 1, 0.36, 1] }}
           />
-          <circle r={9} fill="var(--gold)" filter="url(#markerGlow)" opacity={0.55} />
-          <circle r={3.8} fill="var(--gold)" />
           <motion.line
-            x1={15}
+            x1={10}
             y1={0}
-            x2={58}
+            x2={52}
             y2={0}
             stroke="var(--gold)"
             strokeWidth={1}
             initial={{ pathLength: 0 }}
             whileInView={{ pathLength: 1 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.6, delay: 1.2 }}
+            transition={{ duration: 0.6, delay: 1.5 }}
           />
           <motion.g
             initial={{ opacity: 0, x: -6 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.7, delay: 1.4, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.7, delay: 1.7, ease: [0.22, 1, 0.36, 1] }}
           >
             <text
-              x={66}
+              x={60}
               y={-4}
               fill="var(--ivory)"
               fontFamily="'Cormorant Garamond', Georgia, serif"
@@ -466,9 +588,9 @@ export default function EditorialMap({
               Boaz Studios
             </text>
             <text
-              x={66}
+              x={60}
               y={16}
-              fill="rgba(240,188,0,0.85)"
+              fill="rgba(240,188,0,0.9)"
               fontFamily="Inter, system-ui, sans-serif"
               fontSize={10}
               fontWeight={500}
@@ -561,3 +683,19 @@ export default function EditorialMap({
     </a>
   );
 }
+
+// Scattered greenspace pixels inside the park — deterministic so SSR matches.
+const PARK_SPECKS = (() => {
+  const r = rng(42);
+  const specks: { x: number; y: number; r: number }[] = [];
+  // Avoid the lake/pond regions so we don't speck over water.
+  for (let i = 0; i < 90; i++) {
+    const x = r() * 270 + 10;
+    const y = r() * 580 + 20;
+    const inLake = x > 50 && x < 244 && y > 196 && y < 350;
+    const inPond = x > 140 && x < 200 && y > 96 && y < 140;
+    if (inLake || inPond) continue;
+    specks.push({ x, y, r: 0.6 + r() * 1.2 });
+  }
+  return specks;
+})();
